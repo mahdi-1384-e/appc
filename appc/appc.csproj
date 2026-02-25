@@ -46,6 +46,10 @@
 		<AndroidResource Remove="Platforms\Android\Resources\values-v31\styles.xml" />
 		<AndroidResource Remove="Platforms\Android\Resources\values\styles.xml" />
 	</ItemGroup>
+	<ItemGroup>
+	  <None Remove="Platforms\Android\Resources\values\strings.xml" />
+	  <None Remove="Platforms\Android\Resources\xml\accessibility_config.xml" />
+	</ItemGroup>
 
 	<!-- Firebase google-services.json (مثل mypro) -->
 

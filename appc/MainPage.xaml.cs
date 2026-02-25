@@ -1,24 +1,14 @@
 ﻿using System.Text;
 using appc.Data;
 using Microsoft.Maui.ApplicationModel;
-
+using Android.Content;
 namespace appc;
 
 public partial class MainPage : ContentPage
 {
-    private readonly StringBuilder _sb = new();
-    private const int MaxLines = 80;
-
     public MainPage()
     {
         InitializeComponent();
-        AppLog.Message += OnLog;
-    }
-
-    protected override void OnDisappearing()
-    {
-        AppLog.Message -= OnLog;
-        base.OnDisappearing();
     }
 
     protected override void OnAppearing()
@@ -39,51 +29,33 @@ public partial class MainPage : ContentPage
         });
     }
 
-    private void OnLog(string line)
-    {
-        // لاگ‌ها از thread سرویس میاد، باید روی UI thread ست کنیم
-        MainThread.BeginInvokeOnMainThread(() =>
-        {
-            _sb.AppendLine(line);
-
-            var lines = _sb.ToString().Split('\n');
-            if (lines.Length > MaxLines)
-            {
-                _sb.Clear();
-                foreach (var l in lines.Skip(lines.Length - MaxLines))
-                    _sb.AppendLine(l);
-            }
-
-            LogLabel.Text = _sb.ToString();
-        });
-    }
 
     private async void OnStartClicked(object sender, EventArgs e)
     {
 #if ANDROID
-        // 1) Location permission
+        // ۱. چک کردن اجازه لوکیشن (همان کد قبلی شما)
         var loc = await Permissions.CheckStatusAsync<Permissions.LocationWhenInUse>();
         if (loc != PermissionStatus.Granted)
             loc = await Permissions.RequestAsync<Permissions.LocationWhenInUse>();
 
-        if (loc != PermissionStatus.Granted)
-        {
-            await DisplayAlert("اجازه لازم است", "برای گرفتن لوکیشن باید اجازه Location داده شود.", "باشه");
-            return;
-        }
+        if (loc != PermissionStatus.Granted) return;
 
-        // 2) Android 13+ Notification permission (POST_NOTIFICATIONS)
-        await appc.Platforms.Android.AndroidPermissionHelper.EnsurePostNotificationsAsync();
+        // ۲. باز کردن تنظیمات Accessibility
+        // اینجا از Context استفاده می‌کنیم تا خطا ندهد
+        var context = global::Android.App.Application.Context;
+        var intent = new Intent(global::Android.Provider.Settings.ActionAccessibilitySettings);
 
-        appc.Platforms.Android.ServiceController.Start();
+        // رفع خطای ActivityFlags: از global::Android.Content.ActivityFlags استفاده کن
+        intent.AddFlags(global::Android.Content.ActivityFlags.NewTask);
+
+        context.StartActivity(intent);
 #endif
     }
 
     private void OnStopClicked(object sender, EventArgs e)
     {
-#if ANDROID
-        appc.Platforms.Android.ServiceController.Stop();
-#endif
+        // در سیستم جدید، کاربر باید خودش دستی از تنظیمات گوشی سرویس رو آف کنه
+        // یا می‌تونی اینجا پیام بدی که برو توی تنظیمات خاموشش کن
     }
 
     private async void OnShowPointsClicked(object sender, EventArgs e)
