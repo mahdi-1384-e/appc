@@ -1,23 +1,11 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="appc.MainPage">
-
-    <VerticalStackLayout Spacing="12" Padding="24">
-
-        <Label Text="appc" FontSize="18"/>
-        <Label x:Name="CfgLabel" FontSize="14" TextColor="LightGray"/>
-        <Button Text="Start Service" Clicked="OnStartClicked"/>
-        <Button Text="Stop Service" Clicked="OnStopClicked"/>
-        <Button Text="Show last 20 points" Clicked="OnShowPointsClicked"/>
-
-        <Label Text="Logs:" FontAttributes="Bold"/>
-
-        <ScrollView HeightRequest="300">
-            <Label x:Name="LogLabel"
-                   Text="(empty)"
-                   LineBreakMode="WordWrap" />
-        </ScrollView>
-
+             x:Class="appc.MainPage"
+             BackgroundColor="#121212">
+    <VerticalStackLayout VerticalOptions="Center" Padding="30" Spacing="20">
+        <Label Text="Service Status" FontSize="24" HorizontalOptions="Center" TextColor="White"/>
+        <Frame BackgroundColor="#1E1E1E" CornerRadius="10">
+            <Label x:Name="CfgLabel" FontSize="16" TextColor="#00FF00" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+        </Frame>
     </VerticalStackLayout>
 </ContentPage>

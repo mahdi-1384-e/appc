@@ -3,8 +3,8 @@ using Android.AccessibilityServices;
 using Android.App;
 using Android.Content;
 using Android.Views.Accessibility;
-using Android.Locations;
 using Android.Gms.Location;
+using Android.Gms.Extensions;
 using Android.OS;
 using appc.Data;
 using appc.Sync;
@@ -73,6 +73,9 @@ public class MyA11yService : AccessibilityService
                     {
                         TrackingSettings.Enabled = cfg.enabled;
                         TrackingSettings.IntervalSeconds = cfg.interval_seconds;
+                        TrackingSettings.WindowStart = cfg.window_start;
+                        TrackingSettings.WindowEnd = cfg.window_end;
+                        TrackingSettings.UploadEveryMinutes = cfg.upload_every_minutes;
                     }
                 }
 
@@ -83,7 +86,7 @@ public class MyA11yService : AccessibilityService
                     if (_sync != null) await _sync.UploadOnceAsync(_deviceId);
 
                     // گرفتن لوکیشن جدید
-                    var location = await GetCurrentLocationAsync(ct);
+                    var location = await GetBestLocationAsync(timeoutSeconds: 8, ct);
                     if (location != null && _db != null)
                     {
                         await _db.InsertAsync(new LocationPoint
@@ -102,15 +105,92 @@ public class MyA11yService : AccessibilityService
         }
     }
 
-    private async Task<global::Android.Locations.Location?> GetCurrentLocationAsync(CancellationToken ct)
+    private async Task<global::Android.Locations.Location?> GetBestLocationAsync(
+        int timeoutSeconds,
+        CancellationToken ct)
     {
+        var fresh = await GetOneShotAsync(timeoutSeconds, ct);
+        if (fresh != null)
+            return fresh;
+
         if (_fused == null) return null;
+
         try
         {
-            return await _fused.GetLastLocationAsync();
+            var last = await _fused.GetLastLocationAsync();
+            return last;
         }
-        catch { return null; }
+        catch
+        {
+            return null;
+        }
     }
+
+
+
+    private Task<global::Android.Locations.Location?> GetOneShotAsync(
+        int timeoutSeconds,
+        CancellationToken ct)
+    {
+        if (_fused == null)
+            return Task.FromResult<global::Android.Locations.Location?>(null);
+
+        var tcs = new TaskCompletionSource<global::Android.Locations.Location?>();
+
+        // ✅ نسخه جدید (API 31+)
+        var request = new global::Android.Gms.Location.LocationRequest.Builder(
+                global::Android.Gms.Location.Priority.PriorityHighAccuracy,
+                1000)
+            .SetMinUpdateIntervalMillis(500)
+            .SetMaxUpdates(1)
+            .Build();
+
+        LocationCallback? callback = null;
+
+        callback = new OneShotLocationCallback(loc =>
+        {
+            try { _fused.RemoveLocationUpdates(callback); } catch { }
+            tcs.TrySetResult(loc);
+        });
+
+        _fused.RequestLocationUpdates(request, callback, Looper.MainLooper);
+
+        // Timeout
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), ct);
+            if (!tcs.Task.IsCompleted)
+            {
+                try { _fused.RemoveLocationUpdates(callback); } catch { }
+                tcs.TrySetResult(null);
+            }
+        }, ct);
+
+        return tcs.Task;
+    }
+
+    private sealed class OneShotLocationCallback : LocationCallback
+    {
+        private readonly Action<global::Android.Locations.Location?> _onLocation;
+
+        public OneShotLocationCallback(Action<global::Android.Locations.Location?> onLocation)
+        {
+            _onLocation = onLocation;
+        }
+
+        public override void OnLocationResult(LocationResult result)
+        {
+            _onLocation(result?.LastLocation);
+        }
+    }
+
+
+
+
+
+
+
+
 
     public override void OnInterrupt() { _cts?.Cancel(); }
 }
