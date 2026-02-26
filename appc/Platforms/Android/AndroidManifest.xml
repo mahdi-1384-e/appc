@@ -13,7 +13,8 @@
 	<application
 		android:allowBackup="true"
 		android:label="appc"
-		android:supportsRtl="true">
+		android:supportsRtl="true"
+		android:stopWithTask="false">
 		<receiver
 			android:name="appc.Platforms.Android.FusedLocationReceiver"
 			android:exported="false" />
